@@ -69,6 +69,46 @@ Además, se verifica explícitamente que no existe solapamiento entre particione
 
 ---
 
+## 3. Análisis exploratorio y control de leakage
+
+En el Notebook 1 se realiza un análisis exploratorio del dataset: distribución de clases, longitudes de texto, palabras frecuentes, nubes de palabras y ejemplos por clase.
+
+Una parte central del análisis consiste en revisar posibles fuentes de **data leakage**. En trabajos previos, el profesor señaló la importancia de comprobar si existían palabras que simplificaran artificialmente la tarea, como nombres de fuentes muy asociadas a una clase.
+
+### 3.1. Posibles atajos de fuente
+
+El análisis detecta términos de fuente muy asociados a una clase. Por ejemplo:
+
+| Término | Interpretación |
+|---|---|
+| `reuters` | Aparece mayoritariamente en noticias reales |
+| `infowars` | Aparece mayoritariamente en noticias fake |
+| `natural news` | Asociado a noticias fake |
+| `yournewswire` | Asociado a noticias fake |
+| `beforeitsnews` | Asociado a noticias fake |
+
+Estos términos pueden actuar como atajos: el modelo podría clasificar por fuente en lugar de aprender patrones generales de desinformación.
+
+### 3.2. Posibles palabras-etiqueta
+
+También se revisan palabras que podrían coincidir directamente con las etiquetas del problema:
+
+```text
+fake, false, partially false, true, real, label, category
+```
+
+Estas palabras no aparecen de forma completamente exclusiva en una sola clase, por lo que no constituyen una fuga directa absoluta. Aun así, se eliminan posteriormente como medida conservadora.
+
+### 3.3. Mitigación aplicada
+
+Para reducir el riesgo de aprendizaje por atajos, se eliminan términos de fuente y palabras-etiqueta de alto riesgo en:
+
+- TF-IDF.
+- Word2Vec.
+- Embeddings BERT.
+- Fine-tuning de DistilBERT.
+
+Esta mitigación reduce el riesgo de leakage explícito, aunque se reconoce como limitación que pueden permanecer sesgos indirectos de fuente, estilo o temática.
 
 
 
