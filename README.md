@@ -69,11 +69,11 @@ Además, se verifica explícitamente que no existe solapamiento entre particione
 
 ---
 
-## 3. Análisis exploratorio y control de leakage
+## 3. Análisis y control de leakage
 
-En el Notebook 1 se realiza un análisis exploratorio del dataset: distribución de clases, longitudes de texto, palabras frecuentes, nubes de palabras y ejemplos por clase.
+A lo largo del  Notebook 1 se ha realizado un análisis detallado del dataset: distribución de clases, longitudes de texto, palabras frecuentes, nubes de palabras y ejemplos por clase.
 
-Una parte central del análisis consiste en revisar posibles fuentes de **data leakage**. En trabajos previos, el profesor señaló la importancia de comprobar si existían palabras que simplificaran artificialmente la tarea, como nombres de fuentes muy asociadas a una clase.
+Una parte central del análisis consiste en revisar posibles fuentes de **data leakage**, ya que es un especialmente importante en un dataset de estas caracteristicas comprobar si existen palabras que simplificaran artificialmente la tarea, como nombres de fuentes muy parecidos a una clase.
 
 ### 3.1. Posibles atajos de fuente
 
