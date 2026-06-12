@@ -1,8 +1,9 @@
 ## Análisis de desinformación y polarización lingüística en noticias mediante modelos de lenguaje
 **Alumna:** Ana Gabriela García Rivas  
-**Asignatura:** Tratamiento de Datos  
-**Dataset:** WELFake 
 
+**Asignatura:** Tratamiento de Datos  
+
+**Dataset:** WELFake 
 **Problema:** Clasificación binaria de noticias reales y falsas  
 
 ---
