@@ -229,32 +229,184 @@ Los resultados muestran que TF-IDF es muy competitivo porque el dataset contiene
 En conjunto, esta comparación permite concluir que la representación del texto tiene un impacto directo en el rendimiento del clasificador. En WELFake, las señales léxicas son muy potentes, pero el mejor rendimiento se alcanza cuando se combinan representación contextual y ajuste supervisado mediante DistilBERT fine-tuned.
 ---
 
-
-
 ## 5. Modelos de clasificación
 
-En el Notebook 3 se entrenan y comparan los siguientes modelos:
+Una vez obtenidas las representaciones vectoriales del texto, se pasa  al entrenamiento, comparación y evaluacion de distintos modelos de clasificación supervisada. 
 
-| Bloque | Modelos |
+El objetivo es analizar cómo cambia el rendimiento al aplicar la combinación de diferentes tipos de representaciones con modelos de complejidad distinta.
+
+El problema se plantea como una clasificación binaria:
+
+| Etiqueta | Clase |
+|---:|---|
+| `0` | Real |
+| `1` | Fake |
+
+El flujo seguido en cada bloque  es el mismo. Cada modelo se entrena con el conjunto de **train**, se compara con el conjunto de **validation** y se evalúa finalmente en **test**. Esta separación es importante porque evita escoger el mejor modelo mirando directamente el conjunto de test.
+
+| Conjunto | Uso |
 |---|---|
-| Scikit-learn | Logistic Regression, Linear SVM, Random Forest |
-| PyTorch | MLP con tres capas ocultas |
-| Hugging Face | Fine-tuning de DistilBERT |
+| Train | Entrenar los modelos y ajustar parámetros internos |
+| Validation | Comparar modelos y seleccionar la mejor configuración |
+| Test | Evaluación final, una vez elegido el modelo |
 
-La evaluación se realiza separando claramente validation y test:
+Las métricas utilizadas son **Accuracy**, **F1-score de la clase fake** y **ROC-AUC**. Aunque la accuracy permite medir el porcentaje global de aciertos, en este proyecto se presta una mayor atención  `F1_fake`, debido a  que el objetivo principal es detectar correctamente noticias falsas. Esta métrica combina precisión y recall de la clase fake, por lo que penaliza tanto clasificar noticias reales como falsas como no detectar noticias falsas reales.
 
-- **Validation** se usa para comparar modelos y seleccionar el mejor.
-- **Test** se reserva para la evaluación final.
+### 5.1. Modelos clásicos de Scikit-learn
 
-Las métricas utilizadas son:
+Para empezar, se entrenan tres modelos  de aprendizaje supervisado: **Logistic Regression**, **Linear SVM** y **Random Forest**. Esto permitirá realizar una comparación robústa frente a modelos neuronales complejos.
 
-- Accuracy.
-- F1-score sobre la clase fake (`F1_fake`).
-- ROC-AUC.
+| Modelo | Representación | Utilización|
+|---|---|---|
+| Logistic Regression | TF-IDF, Word2Vec, BERT embeddings | Base lineal, sencilla y interpretable |
+| Linear SVM | TF-IDF, Word2Vec, BERT embeddings | Modelo lineal eficaz en texto de alta dimensión |
+| Random Forest | TF-IDF SVD300, Word2Vec, BERT embeddings | Modelo no lineal basado en árboles, contraste de información|
 
-Se presta especial atención a `F1_fake`, ya que el objetivo principal es detectar correctamente noticias falsas.
+#### Logistic Regression
+
+Se emplea como primer clasificador de referencia. Es modelo relativamente simple que resulta adecuado para problemas de texto, especialmente cuando se combinan representaciones del tipo TF-IDF. 
+
+| Parámetro | Valor | Justificación |
+|---|---:|---|
+| `penalty` | `l2` | Reduce sobreajuste penalizando pesos excesivamente grandes |
+| `C` | `1.0` | Valor estándar, mantiene un equilibrio entre ajuste y regularización |
+| `solver` | `saga` | Adecuado para datasets grandes y matrices dispersas como TF-IDF |
+| `max_iter` | `2000` | Permite la convergencia con representaciones de alta dimensión |
+| `n_jobs` | `-1` | Usa todos los núcleos disponibles para acelerar el entrenamiento |
+
+Sirve como un punto de referencia en la evaluación.  Si un modelo más complejo no supera a Logistic Regression, entonces su mayor coste computacional no estaría justificado. En los resultados finales, Logistic Regression con TF-IDF obtiene un rendimiento muy alto, lo que confirma que WELFake contiene señales léxicas muy discriminativas.
+
+#### Linear SVM
+
+Este clasificador busca una frontera de separación con el mayor margen posible entre clases. Además, es especialmente útil en clasificación de texto debido a que no le supone un esfuerzo trabajar con vectores de alta dimensión, como los generados por TF-IDF.
+
+
+| Parámetro | Valor | Justificación |
+|---|---:|---|
+| `max_iter` | `5000` | Aumenta el número máximo de iteraciones para asegurar convergencia |
+| `random_state` | `42` | Permite reproducir los resultados |
+| Tipo de SVM | Lineal | Adecuado para texto de alta dimensión |
+
+Al evaluar la clasificación del dataset en su totalidad, Linear SVM toma un papel protagonista ya que termina siendo el mejor modelo clásico. El buen redimiento con TF-IDF indica que gran parte de la información necesaria para clasificar noticias reales y falsas está presente en la distribución de palabras y bigramas. 
+
+#### Random Forest
+
+Se incluye como modelo no lineal que combina múltiples árboles entrenados sobre subconjuntos de datos y características. 
+
+De esta forma, no es el modelo más natural para texto de alta dimensión. Por lo tanto, cuando se utiliza con TF-IDF no se emplea la matriz completa de 50.000 términos, sino una versión reducida. Esta reducción hace que el entrenamiento sea más manejable y comparable en tamaño a Word2Vec.
+
+| Parámetro | Valor | Justificación |
+|---|---:|---|
+| `n_estimators` | `300` | Número suficiente de árboles para estabilizar el modelo |
+| `min_samples_leaf` | `2` | Reduce sobreajuste evitando hojas con muy pocos ejemplos |
+| `class_weight` | `balanced` | Compensa posibles diferencias de frecuencia entre clases |
+| TF-IDF usado | `SVD300` | Reduce coste computacional y dimensionalidad |
+| `n_jobs` | `-1` | Paraleliza el entrenamiento |
+
+Random Forest se incluye como contraste frente a modelos lineales y neuronales. Obtiene resultados  más bajos, lo cual es esperable, ya quelos modelos basados en árboles no suelen explotar tan bien las representaciones textuales dispersas o embeddings de alta dimensión.
+
+### 5.2. Red neuronal MLP en PyTorch
+
+Se implementa una **red neuronal multicapa** en PyTorch. Esta red se aplica sobre tres representaciones: TF-IDF reducido mediante SVD300, Word2Vec y embeddings BERT.
+
+La arquitectura utilizada tiene tres capas ocultas:
+
+```text
+Entrada → 512 neuronas → 256 neuronas → 128 neuronas → salida binaria
+```
+
+
+| Elemento | Valor | Justificación |
+|---|---:|---|
+| Capas ocultas | `(512, 256, 128)` | Arquitectura que comprime progresivamente la información |
+| Activación | `ReLU` | Introduce no linealidad y facilita el entrenamiento |
+| Batch Normalization | Sí | Estabiliza el aprendizaje entre capas |
+| Dropout | `0.3` | Reduce sobreajuste apagando neuronas aleatoriamente |
+| Función de pérdida | `BCEWithLogitsLoss` | Adecuada para clasificación binaria, estable numéricamente |
+| Optimizador | `Adam` | Optimizador robusto y eficiente para redes neuronales |
+| Learning rate | `1e-3` | Valor habitual para MLP con Adam |
+| Batch size | `512` | Permite entrenamiento eficiente en GPU/CPU |
+| Early stopping | `patience = 4` | Detiene el entrenamiento si no mejora la validación |
+| Scheduler | `ReduceLROnPlateau` | Reduce el learning rate si la pérdida de validación se estanca |
+
+La red neuronal multicapa hace posible la evaluación entre  una arquitectura neuronal simple y modelos clásicos. 
+
+Al analizar los resultados, la red neuronal funciona muy bien con embeddings BERT y con TF-IDF reducido,  indicando  que es capaz de aprovechar representaciones densas y no lineales. Sin embargo, no llega a superar al fine-tuning de DistilBERT, porque el MLP solo aprende sobre vectores ya generados, mientras que el fine-tuning ajusta directamente el modelo de lenguaje completo.
+
+### 5.3. Fine-tuning de DistilBERT
+
+Se trata del modelo más complejo del proyecto, **fine-tuning de DistilBERT** mediante Hugging Face Transformers.Para ello, el texto tokenizado entra directamente al Transformer y se ajustan los pesos del modelo preentrenado para la tarea concreta de clasificar noticias reales y falsas.
+
+
+| Parámetro | Valor | Justificación |
+|---|---:|---|
+| Modelo base | `distilbert-base-uncased` | Transformer ligero y eficiente para fine-tuning |
+| `MAX_LEN` | `256` | Compromiso entre conservar información y limitar memoria GPU |
+| Batch size | `8` en GPU | Evita saturar memoria durante el cálculo de gradientes |
+| Épocas | `3` | Adaptar el modelo sin entrenar en exceso |
+| Learning rate | `2e-5` | Valor típico y estable para fine-tuning de Transformers |
+| Weight decay | `0.01` | Regularización para reducir sobreajuste |
+| Warmup | 10 % de pasos | Estabiliza el inicio del entrenamiento |
+| Evaluación | Cada época | Permite monitorizar validation en el entrenamiento |
+| Selección del modelo | Mejor `F1` en validation | Prioriza la detección de noticias fake |
+| `fp16` | Activado con GPU | Reduce memoria y acelera entrenamiento |
+
+Antes del fine-tuning se aplica una limpieza mínima filtrada, eliminando URLs y términos de alto riesgo asociados a fuentes o etiquetas, como `reuters`, `infowars`, `fake`, `false`, `true` o `real`, pero se conserva el resto de la estructura textual. Reduciendo atajos explícitos sin destruir el contexto.
+
+El fine-tuning es el enfoque que obtiene el mejor resultado global porque adapta el modelo completo a WELFake. Mientras que los embeddings BERT solo usan el conocimiento lingüístico general del modelo preentrenado, el fine-tuning permite que DistilBERT aprenda patrones específicos del dataset, incluyendo estilo, estructura, temática y relaciones contextuales.
+
+### 5.4. Comparación metodológica entre los modelos
+
+Los modelos se han escogido para cubrir distintos niveles de complejidad:
+
+          
+| Modelo | Tipo de enfoque | Justificación|
+| --- | --- | --- |
+| **Logistic Regression** | Modelo lineal clásico | Permite comprobar si una relación lineal entre las palabras y la clase es suficiente para clasificar noticias reales y falsas. |
+| **Linear SVM** | Modelo lineal de margen máximo |Buen funcionamiento con TF-IDF y permite comprobar si maximizar el margen mejora la clasificación frente a Logistic Regression. |
+| **Random Forest** | Modelo no lineal basado en árboles | Permite evaluar si combinar muchos árboles aporta ventajas frente a modelos lineales en representaciones reducidas como Word2Vec, BERT o TF-IDF con SVD. |
+| **MLP PyTorch** | Red neuronal sobre vectores | Sirve para comprobar si una red neuronal densa puede aprovechar mejor las representaciones vectoriales que los clasificadores clásicos. |
+| **DistilBERT fine-tuning** | Transformer ajustado extremo a extremo | Permite evaluar si adaptar un modelo de lenguaje completo a la tarea mejora de forma evidente los resultados |                  |
+
+
+Esta comparación es especialmente importante para decidir si realmente  para detectar desinformación  es suficiente con técnicas estadísticas clásicas o si realmente es necesario utilizar modelos de lenguaje avanzados. 
+
+Los resultados muestran la siguiente conclusión. Por un lado, los modelos clásicos, como **Linear SVM con TF-IDF**, ofrece un rendimiento muy alto y son más baratos computacionalmente. Por otro lado, el mejor resultado global se alcanza con **DistilBERT fine-tuned**, lo que confirma que adaptar un Transformer a la tarea permite capturar patrones más complejos.
+
+Por tanto, la elección del modelo depende del objetivo. Si se busca eficiencia, interpretabilidad y bajo coste, SVM con TF-IDF es una opción muy sólida. Si se busca maximizar el rendimiento y se dispone de GPU, el fine-tuning de DistilBERT es la alternativa más potente.
+
+
+## 6. Resultados experimentales
+
+### 6.1. Resultados finales en test
+
+| Ranking | Modelo | Representación | Accuracy | F1_fake | ROC-AUC |
+|---:|---|---|---:|---:|---:|
+| 1 | DistilBERT fine-tuning | Texto filtrado | 0.9943 | 0.9938 | 0.9998 |
+| 2 | Linear SVM | TF-IDF | 0.9667 | 0.9631 | 0.9942 |
+| 3 | MLP PyTorch | BERT-emb | 0.9648 | 0.9609 | 0.9944 |
+| 4 | MLP PyTorch | TF-IDF SVD300 | 0.9580 | 0.9536 | 0.9930 |
+| 5 | Logistic Regression | TF-IDF | 0.9569 | 0.9522 | 0.9911 |
+| 6 | MLP PyTorch | Word2Vec | 0.9452 | 0.9384 | 0.9875 |
+| 7 | Linear SVM | BERT-emb | 0.9408 | 0.9343 | 0.9839 |
+| 8 | Logistic Regression | BERT-emb | 0.9408 | 0.9343 | 0.9837 |
+| 9 | Random Forest | TF-IDF SVD300 | 0.9230 | 0.9128 | 0.9756 |
+| 10 | Linear SVM | Word2Vec | 0.9178 | 0.9085 | 0.9714 |
+| 11 | Logistic Regression | Word2Vec | 0.9136 | 0.9035 | 0.9702 |
+| 12 | Random Forest | BERT-emb | 0.8905 | 0.8772 | 0.9571 |
+| 13 | Random Forest | Word2Vec | 0.8875 | 0.8753 | 0.9559 |
+
+### 6.2. Interpretación de resultados
+
+El mejor modelo global es **DistilBERT fine-tuned sobre texto filtrado**, con `F1_fake = 0.9938`. Este resultado indica que el ajuste supervisado del Transformer permite capturar patrones textuales muy discriminativos del dataset.
+
+El mejor modelo clásico es **Linear SVM con TF-IDF**, con `F1_fake = 0.9631`. Esto confirma que TF-IDF es una representación muy fuerte para WELFake, probablemente porque existen señales léxicas importantes entre noticias reales y falsas.
+
+Los embeddings BERT congelados también son útiles, especialmente al usarse con una red neuronal MLP, pero no alcanzan el rendimiento del fine-tuning. Esto muestra que usar BERT como extractor fijo no es equivalente a ajustar el Transformer completo a la tarea.
+
+Word2Vec queda por debajo de TF-IDF y BERT. Esto es esperable porque representa cada noticia mediante el promedio de embeddings de palabras, perdiendo orden, estructura y contexto global.
+
+Random Forest es el modelo más débil. No es sorprendente, ya que no suele ser el método más adecuado para texto de alta dimensión. Además, para TF-IDF se usa una reducción SVD a 300 dimensiones por razones computacionales, lo que hace que su comparación con Logistic Regression y SVM no sea completamente equivalente.
 
 ---
-
-
 
