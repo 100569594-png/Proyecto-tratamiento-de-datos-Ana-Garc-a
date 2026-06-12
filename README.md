@@ -400,13 +400,188 @@ Por tanto, la elección del modelo depende del objetivo. Si se busca eficiencia,
 
 El mejor modelo global es **DistilBERT fine-tuned sobre texto filtrado**, con `F1_fake = 0.9938`. Este resultado indica que el ajuste supervisado del Transformer permite capturar patrones textuales muy discriminativos del dataset.
 
-El mejor modelo clásico es **Linear SVM con TF-IDF**, con `F1_fake = 0.9631`. Esto confirma que TF-IDF es una representación muy fuerte para WELFake, probablemente porque existen señales léxicas importantes entre noticias reales y falsas.
+El mejor modelo clásico es **Linear SVM con TF-IDF**, con `F1_fake = 0.9631`. Esto confirma que TF-IDF es una representación muy fuerte para WELFake, debido a que existen señales léxicas importantes entre noticias reales y falsas.
 
-Los embeddings BERT congelados también son útiles, especialmente al usarse con una red neuronal MLP, pero no alcanzan el rendimiento del fine-tuning. Esto muestra que usar BERT como extractor fijo no es equivalente a ajustar el Transformer completo a la tarea.
+Los embeddings BERT también son útiles, especialmente al ser utilizados con la red neuronal MLP, sin embargo, no llegan a  alcanzar el rendimiento del fine-tuning. Esto demuestra la utilización de BERT como extractor fijo no es equivalente a ajustar el Transformer completo a la tarea.
 
-Word2Vec queda por debajo de TF-IDF y BERT. Esto es esperable porque representa cada noticia mediante el promedio de embeddings de palabras, perdiendo orden, estructura y contexto global.
+Por otro lado, Word2Vec queda por debajo de TF-IDF y BERT. Este comportamiento es esperable porque representa cada noticia mediante el promedio de embeddings de palabras, perdiendo orden, estructura y contexto global.
 
-Random Forest es el modelo más débil. No es sorprendente, ya que no suele ser el método más adecuado para texto de alta dimensión. Además, para TF-IDF se usa una reducción SVD a 300 dimensiones por razones computacionales, lo que hace que su comparación con Logistic Regression y SVM no sea completamente equivalente.
+Random Forest es el modelo más débil. Esto no es sorprendente, debido a que no suele ser el método más adecuado para texto de alta dimensión. Además, para TF-IDF se usa una reducción SVD a 300 dimensiones por razones computacionales, lo que hace que su comparación con Logistic Regression y SVM no sea completamente equivalente.
+
+---
+
+## 7. Pruebas de robustez frente a leakage
+
+Dado que los resultados son muy elevados, se realizan comprobaciones adicionales para descartar fugas de información.
+
+El objetivo es  evaluar la fiabilidad metodológica del trabajo y comprobar si los modelos están aprendiendo patrones reales del texto. 
+
+### 7.1. Entrenamiento con etiquetas aleatorias
+
+La primera prueba consiste en entrenar un modelo utilizando las etiquetas de entrenamiento mezcladas aleatoriamente. De esta forma se rompe la relación real entre cada noticia y su clase.
+
+| Prueba | Accuracy | F1_fake | ROC-AUC |
+|---|---:|---:|---:|
+| Etiquetas aleatorias | 0.5085 | 0.3518 | 0.4817 |
+
+Esto indica que el pipeline no aprende patrones útiles cuando se rompe la relación entre texto y etiqueta.
+
+### 7.2. Baseline basada solo en términos de fuente o etiqueta
+
+La segunda prueba mide cuánto rendimiento se puede obtener empleando únicamente la lista de términos potencialmente problemáticos, como nombres de fuentes o dominios relacionados con  determinadas clases, así como palabras cercanas a las etiquetas
+
+| Prueba | Accuracy | F1_fake | ROC-AUC |
+|---|---:|---:|---:|
+| Solo términos fuente/etiqueta | 0.7792 | 0.7997 | 0.8137 |
+
+Este resultado es relativamente alto, lo que confirma que el dataset contiene señales de fuente y etiqueta. Sin embargo, queda claramente por debajo de SVM + TF-IDF y DistilBERT fine-tuned. Por tanto, estos términos explican parte del sesgo del dataset, pero no justifican por sí solos el rendimiento final.
+
+### 7.3. Comprobación del filtrado BERT
+
+Se comprueba que los términos de alto riesgo no aparecen en el texto filtrado usado por BERT. El resultado es:
+
+| Prueba | Resultado |
+|---|---|
+| Términos restantes tras filtrado | 0 |
+
+Esto confirma que el fine-tuning no recibe directamente los términos explícitos definidos como alto riesgo.
+
+
+## 8. Proyecto de extensión: análisis temático y polarización lingüística
+
+Como trabajo de extensión se realiza un análisis de interpretación del dataset mediante clustering y medición de indicadores lingüísticos de polarización.
+
+El objetivo  es estudiar si las noticias falsas se concentran en determinados grupos temáticos y si presentan mayor carga política, emocional o confrontativa.
+
+### 8.1. Clustering temático con BERT
+
+Se utilizan los embeddings BERT generados en el Notebook 2 y se aplica KMeans. El número de clusters se selecciona de forma exploratoria mediante silhouette score, obteniendo:
+
+```text
+k = 6
+```
+
+El clustering se ajusta solo sobre train y después se asignan clusters a validation y test.
+
+La distribución de noticias fake por cluster muestra que la desinformación no se reparte de forma homogénea:
+
+| Cluster | % Fake |
+|---:|---:|
+| 5 | 82,68 % |
+| 2 | 63,47 % |
+| 3 | 46,14 % |
+| 1 | 25,27 % |
+| 4 | 11,55 % |
+| 0 | 11,15 % |
+
+El cluster 5, muy dominado por noticias fake, contiene palabras clave relacionadas con política, por ejemplo:
+
+```text
+trump, clinton, hillary, president, donald, video, obama, twitter
+```
+
+Esto sugiere que parte de la desinformación del dataset se concentra en temas políticos polarizantes.
+
+La silhouette obtenida es baja, por lo tanto, los clusters no deben interpretarse como categorías temáticas separadas de forma perfecta. Sin embargo, permiten una exploración útil de la estructura temática del dataset.
+
+### 8.2. Indicadores de polarización lingüística
+
+Se calculan tres indicadores por cada 1000 palabras:
+
+| Indicador | Descripción |
+|---|---|
+| `political_rate` | Frecuencia de términos políticos |
+| `conflict_rate` | Frecuencia de términos de conflicto |
+| `emotive_rate` | Frecuencia de términos emocionales |
+
+Los resultados por clase son:
+
+| Clase | political_rate | conflict_rate | emotive_rate |
+|---|---:|---:|---:|
+| Fake | 23,69 | 2,63 | 1,26 |
+| Real | 21,42 | 1,87 | 0,45 |
+
+Las noticias falsas tienden a presentar más términos políticos, más vocabulario de conflicto y una carga emocional mayor que las noticias reales. 
+
+No obstante, el análisis por clusters muestra que el lenguaje conflictivo no equivale automáticamente a desinformación, ya que algunos clusters con bajo porcentaje de fake también presentan términos de conflicto.
+
+---
+
+
+## 9. Relación con las hipótesis iniciales
+
+Al inicio del proyecto se plantean diferentes hipótesis sobre el comportamiento esperado del dataset y sobre el rendimiento de las distintas técnicas de clasificación. A continuación se revisa cada hipótesis a partir de los resultados obtenidos en los tres notebooks.
+
+### Hipótesis 1: Diferencias léxicas entre noticias reales y falsas
+
+**Contexto de la hipótesis:**
+Noticias reales y falsas utilizan exactamente el mismo tipo de vocabulario. En concreto, se planteaba que podían existir diferencias en las palabras frecuentes, expresiones utilizadas, nombres propios, fuentes mencionadas o estilo de redacción.
+
+**Resultado obtenido:**
+Esta hipótesis se cumple. Los modelos basados en TF-IDF obtienen resultados muy altos, especialmente Linear SVM + TF-IDF, con un `F1_fake` cercano a `0.963`. Esto indica que las palabras y combinaciones de palabras presentes en los textos contienen mucha información para separar noticias reales y falsas.
+
+---
+
+### Hipótesis 2: Clasificación automática de modelos supervisados. 
+
+**Contexto de la hipótesis:**
+Se plantea que en caso de la existencia de  patrones lingüísticos y temáticos consistentes entre noticias reales y falsas, los modelos de aprendizaje supervisado serían capaces de aprenderlos y obtener buenos resultados.
+
+**Resultado obtenido:**
+Esta hipótesis se cumple. Todos los modelos entrenados superan ampliamente el azar, incluso las alternativas más simples. Los mejores resultados se obtienen con DistilBERT fine-tuning, seguido de Linear SVM con TF-IDF y MLP con embeddings BERT.
+
+---
+
+### Hipótesis 3: Ventaja de modelos contextuales cuando se ajustan directamente a la tarea.
+
+**Contexto de la hipótesis:**
+Modelos tipo BERT pueden aportar ventajas frente a representaciones más simples porque capturan el contexto de las palabras. Sin embargo, también se quería comprobar si bastaba con usar BERT como extractor de embeddings o si era necesario hacer fine-tuning.
+
+**Resultado obtenido:**
+La hipótesis se cumple, pero con matizada. Los embeddings BERT ofrecen buenos resultados, especialmente cuando se combinan con una red neuronal MLP. Sin embargo, no siempre superan a TF-IDF con modelos lineales.
+
+La mejora más clara aparece al hacer fine-tuning de DistilBERT. En este caso, el modelo no solo genera vectores, sino que ajusta sus pesos internos al problema concreto de clasificación de noticias reales y falsas. Por eso consigue el mejor resultado global del proyecto.
+
+---
+
+### Hipótesis 4: Relación entre desinformación y polarización lingüística.
+
+**Contexto de la hipótesis:**
+Las noticias falsas presentan un lenguaje más emocional, político o conflictivo. Esta hipótesis se estudia especialmente en la extensión del proyecto mediante clustering temático e indicadores de polarización lingüística.
+
+**Resultado obtenido:**///////////////////////////////////////////////////////////////
+La hipótesis se cumple parcialmente. La extensión indica que las noticias falsas presentan, de media, mayor presencia de términos políticos, conflictivos y emocionales que las noticias reales. La diferencia más clara aparece en la tasa de términos emocionales, que es superior en la clase fake.
+
+Además, el clustering con embeddings BERT muestra que la desinformación no se distribuye de forma homogénea. Algunos clusters concentran un porcentaje mucho mayor de noticias falsas, especialmente aquellos relacionados con temas políticos y figuras públicas.
+
+No obstante, la relación no es perfecta. Algunos clusters con bajo porcentaje de fake también presentan lenguaje conflictivo, lo cual puede deberse a noticias reales sobre guerra, crisis, terrorismo o política internacional.
+
+///////////////////////////////////////////////////////////////////////////////////
+
+---
+
+
+## 10. Conclusiones
+
+Este proyecto demuestra como la tarea de  clasificación automática de noticias falsas en el dataset WELfake es viable y llega a alcanzar resultados muy elevados. El modelo con mejores resultados obtenidos es DistilBERT fine-tuned sobre texto filtrado, seguido de Linear SVM con TF-IDF.
+
+Estos resultados indican  de forma directa que WELFake contiene patrones textuales, temáticos y estilísticos muy discriminativos. TF-IDF es una representación muy competitiva, lo que confirma la importancia de las señales léxicas. Sin embargo, el mejor rendimiento se obtiene al ajustar un Transformer. 
+
+También se demuestra que los resultados altos no pueden atribuirse directamente a una fuga de información. Se eliminan duplicados, se verifica la ausencia de solapamiento entre particiones, se filtran términos de fuente y palabras-etiqueta, y se realizan pruebas de robustez adicionales.
+
+Además, la extensión demuestra como la desinformación no se distribuye de forma  homogénea, donde algunos clusters concentran un porcentaje mucho mayor de noticias fake. Además, las fake presentan mayor carga política, emocional y confrontativa, lo que conecta el análisis de desinformación con la polarización lingüística.
+
+---
+
+## 11. Limitaciones
+
+Este trabajo presenta varias limitaciones:
+
+1. **Sesgos de fuente y estilo.** Aunque se filtran términos explícitos como `reuters`, `infowars`, `fake` o `false`, pueden permanecer señales indirectas de procedencia, estilo o temática.
+2. **Generalización externa.** Los resultados se obtienen sobre WELFake y no garantizan el mismo rendimiento en otros datasets o dominios.
+3. **Truncamiento en BERT.** Los modelos BERT usan una longitud máxima de 256 tokens, por lo que parte de las noticias largas puede quedar fuera.
+4. **TF-IDF reducido en algunos modelos.** Random Forest y MLP usan TF-IDF reducido mediante SVD a 300 dimensiones por coste computacional, por lo que su comparación con LR/SVM no es completamente equivalente.
+5. **Clustering exploratorio.** La extensión de clustering tiene una silhouette baja, por lo que los clusters deben entenderse como agrupaciones exploratorias y no como categorías temáticas cerradas.
 
 ---
 
