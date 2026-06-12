@@ -549,14 +549,14 @@ La mejora más clara aparece al hacer fine-tuning de DistilBERT. En este caso, e
 **Contexto de la hipótesis:**
 Las noticias falsas presentan un lenguaje más emocional, político o conflictivo. Esta hipótesis se estudia especialmente en la extensión del proyecto mediante clustering temático e indicadores de polarización lingüística.
 
-**Resultado obtenido:**///////////////////////////////////////////////////////////////
+**Resultado obtenido:**
 La hipótesis se cumple parcialmente. La extensión indica que las noticias falsas presentan, de media, mayor presencia de términos políticos, conflictivos y emocionales que las noticias reales. La diferencia más clara aparece en la tasa de términos emocionales, que es superior en la clase fake.
 
 Además, el clustering con embeddings BERT muestra que la desinformación no se distribuye de forma homogénea. Algunos clusters concentran un porcentaje mucho mayor de noticias falsas, especialmente aquellos relacionados con temas políticos y figuras públicas.
 
 No obstante, la relación no es perfecta. Algunos clusters con bajo porcentaje de fake también presentan lenguaje conflictivo, lo cual puede deberse a noticias reales sobre guerra, crisis, terrorismo o política internacional.
 
-///////////////////////////////////////////////////////////////////////////////////
+
 
 ---
 
@@ -575,13 +575,19 @@ Además, la extensión demuestra como la desinformación no se distribuye de for
 
 ## 11. Limitaciones
 
-Este trabajo presenta varias limitaciones:
+El proyecto presenta principalmente las dos siguientes limitaciones.
 
 1. **Sesgos de fuente y estilo.** Aunque se filtran términos explícitos como `reuters`, `infowars`, `fake` o `false`, pueden permanecer señales indirectas de procedencia, estilo o temática.
-2. **Generalización externa.** Los resultados se obtienen sobre WELFake y no garantizan el mismo rendimiento en otros datasets o dominios.
-3. **Truncamiento en BERT.** Los modelos BERT usan una longitud máxima de 256 tokens, por lo que parte de las noticias largas puede quedar fuera.
-4. **TF-IDF reducido en algunos modelos.** Random Forest y MLP usan TF-IDF reducido mediante SVD a 300 dimensiones por coste computacional, por lo que su comparación con LR/SVM no es completamente equivalente.
-5. **Clustering exploratorio.** La extensión de clustering tiene una silhouette baja, por lo que los clusters deben entenderse como agrupaciones exploratorias y no como categorías temáticas cerradas.
+
+2. **Truncamiento en BERT.** Los modelos BERT usan una longitud máxima de 256 tokens, por lo que parte de las noticias largas puede quedar fuera.
+
+## 12.Bibliográfia
+
+Apuntes del temario de la asignatura Tratamiento de Datos. (s. f.). Material docente de la asignatura.
+
+Clustering: El análisis de agrupamientos, cúmulos o clusters. (s. f.). [Vídeo]. YouTube. https://www.youtube.com/watch?v=rWKM5sSSzLM
+
+QuAI. (s. f.). NLP y Word2Vec: Transformando texto en vectores. https://qu-ai.es/word2vec/
 
 ---
 
