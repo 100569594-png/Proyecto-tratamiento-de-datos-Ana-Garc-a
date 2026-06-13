@@ -62,6 +62,8 @@ De esta forma, debido al tamaño del dataset se utiliza la siguiente división e
 
 Esta división de los datos fue la elegida debido a que el dataset es bastante grande, donde validation y test mantienen más de 6.000 ejemplos cada uno, mientras que se conserva el mayor número posible de noticias para entrenar modelos complejos, especialmente el fine-tuning de Transformers.
 
+![Distribución de clases](images/fig_distribucion_clases.png)
+
 Además, se verifica explícitamente que no existe solapamiento entre particiones:
 
 | Comparación | Solapamiento |
