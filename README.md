@@ -4,15 +4,16 @@
 **Asignatura:** Tratamiento de Datos  
 
 **Dataset:** WELFake 
+
 **Problema:** Clasificación binaria de noticias reales y falsas  
 
 ---
 
 ## 1. Descripción del problema
 
-La desinformación se trata de uno de los principales retos del sistema infnformativo actual. La difusión de noticias falsas ha llegado a alterar la percepción pública de la realidad, reforzando creencias  y contribuyendo de forma directa  a la polarización social e ideológica. De esta forma, es relevante estudiar hasta qué punto las técnicas de procesamiento del lenguaje natural (NLP) permiten detectar automáticamente patrones asociados a noticias falsas.
+La desinformación se trata de uno de los principales retos del sistema informativo actual. La difusión de noticias falsas ha llegado a alterar la percepción pública de la realidad, reforzando creencias  y contribuyendo de forma directa  a la polarización social e ideológica. De esta forma, es relevante estudiar hasta qué punto las técnicas de procesamiento del lenguaje natural (NLP) permiten detectar automáticamente patrones asociados a noticias falsas.
 
-En este proyecto se abordará la clasificación automática de noticias reales y falsas utilizando el dataset **WELFake**. Cuyo objetivo principal es comparar diferentes representaciones vectoriales de texto y distintos modelos supervisados para evaluar cuáles son más adecuados en la detección de desinformación.
+En este proyecto se abordará la clasificación automática de noticias reales y falsas utilizando el dataset **WELFake**. El objetivo principal es comparar diferentes representaciones vectoriales de texto y distintos modelos supervisados para evaluar cuáles son más adecuados en la detección de desinformación.
 
 El trabajo se ha organizado en tres notebooks:
 
@@ -113,13 +114,13 @@ Con el objetivo de reducir el riesgo de aprendizaje por atajos, se eliminan tér
 Esta mitigación reduce el riesgo de leakage explícito, aunque se reconoce como limitación que pueden permanecer sesgos indirectos de fuente, estilo o temática.
 
 
-### 4.1. Representaciones vectoriales 
+### 4. Representaciones vectoriales 
 
-Antes de aplicar los modelos de clasificación, es necesario transformar cada noticia formada por carácteres textuales en una representación numérica. Esto se realiza debido a que los algoritmos de machine learning no trabajan directamente con palabras o frases, por lo que cada noticia en su conjunto debe ser convertida en un vector. Asimismo, se representará el texto mediante las siguientes técnicas: **TF-IDF**, **Word2Vec** y **embeddings contextuales BERT**.
+Antes de aplicar los modelos de clasificación, es necesario transformar cada noticia formada por caracteres textuales en una representación numérica. Esto se realiza debido a que los algoritmos de machine learning no trabajan directamente con palabras o frases, por lo que cada noticia en su conjunto debe ser convertida en un vector. Asimismo, se representará el texto mediante las siguientes técnicas: **TF-IDF**, **Word2Vec** y **embeddings contextuales BERT**.
 
 La comparación entre estas representaciones es una parte central del trabajo, porque cada técnica captura un tipo de información diferente:
 
-| Representación | Carácteristica principal | Tipo de vector | Ventaja  | Limitación |
+| Representación | Característica principal | Tipo de vector | Ventaja  | Limitación |
 |---|---|---|---|---|
 | TF-IDF | Importancia estadística de palabras y bigramas | Disperso y de alta dimensión |Altamente eficaz para señales léxicas | No entiende contexto ni orden |
 | Word2Vec | Similitud semántica entre palabras | Denso y de baja dimensión | Agrupa palabras con significado similar| Pierde estructura al promediar palabras |
@@ -127,7 +128,7 @@ La comparación entre estas representaciones es una parte central del trabajo, p
 
 Además, en cada representación se controla el posible uso de términos asociados a leakage, como nombres de fuentes o palabras cercanas a la etiqueta (`reuters`, `infowars`, `fake`, `false`, `true`, `real`, etc.). El objetivo es evitar que los modelos aprendan únicamente atajos evidentes y forzar una comparación más realista entre métodos.
 
-#### 4.1.1. TF-IDF
+#### 4.1. TF-IDF
 
 Convierte cada noticia en un vector donde cada posición representa una palabra o combinación de palabras, y el valor asociado mide su importancia relativa dentro del corpus.
 
@@ -141,7 +142,7 @@ Se toman los siguientes parámetros para definir la representación.
 | Parámetro | Valor | Justificación |
 |---|---:|---|
 | `max_features` | 50.000 | Conserva un vocabulario amplio sin hacerlo inmanejable |
-| `min_df` | 3 | Elimina términos demasiado especificos |
+| `min_df` | 3 | Elimina términos demasiado específicos |
 | `max_df` | 0.90 | Elimina términos demasiado frecuentes y poco informativos |
 | `ngram_range` | (1, 2) | Incluye palabras individuales y pares de palabras |
 | `sublinear_tf` | True | Suaviza el efecto de palabras repetidas muchas veces |
@@ -152,7 +153,7 @@ Esta técnica se ajusta únicamente con el conjunto de entrenamiento, evitando q
 
 TF-IDF acaba siendo una de las representaciones con mejores resultados del dataset. Combinando el alto rendimiento de **SVM + TF-IDF** y **Logistic Regression + TF-IDF**, donde se señala de forma directa como el conjunto de noticias tienen un conjunto de señales léxicas fuertes.
 
-#### 4.1.2. Word2Vec
+#### 4.2. Word2Vec
 
 Esta técnica de embeddings aprende vectores densos para palabras. A diferencia de TF-IDF, Word2Vec no representa una palabra por su frecuencia aislada, sino por los contextos en los que aparece.
 
@@ -178,7 +179,7 @@ Sin embargo, esta técnica tiene una limitación, y es que al promediar los vect
 
 Por ejemplo, dos noticias con palabras similares pero con sentido opuesto podrían terminar teniendo vectores parecidos si se usa simplemente el promedio. Por eso Word2Vec obtiene buenos resultados, pero queda por debajo de TF-IDF y de BERT fine-tuned.Aunque es destacable que Word2Vec es muy útil como representación intermedia, ya que es más semántica que TF-IDF, pero menos compleja y costosa que BERT. 
 
-#### 4.1.3. Embeddings contextuales BERT
+#### 4.3. Embeddings contextuales BERT
 
 Se trata de la tercera representación empleada,  generada con `distilbert-base-uncased`, cuyo objetivo es obtener una representación contextual de cada una de las noticias. DistilBERT es utilizado como extractor de características, donde genera vectores teniendo en cuenta el contexto en el que aparecen las palabras.   
 
@@ -187,7 +188,7 @@ La representación de una palabra depende de la frase en la que aparece. Por eje
 | Parámetro         |              Valor  | Justificación                                                                                                                                                                         |
 | ----------------- | --------------------------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MODEL_NAME`      | `'distilbert-base-uncased'` |  DistilBERT  es una versión más ligera de BERT,  menor coste computacional y buena capacidad para capturar contexto lingüístico.                                   |
-| `MAX_LEN`         |                       `256` | Se limita cada noticia a 256 tokens. Compromiso entre conservar suficiente información del texto y poder procesar el dataset completo. 
+| `MAX_LEN`         |                       `256` | Se limita cada noticia a 256 tokens. Compromiso entre conservar suficiente información del texto y poder procesar el dataset completo. |
 | `BATCH_SIZE`      |                        `16` | Procesado de varios textos en paralelo manteniendo el uso de memoria GPU bajo control.                                                                                            |
 | `N_SAMPLE`        |                      `3000` |Genera una muestra de embeddings para visualizaciones exploratorias como PCA/t-SNE sin tener que representar todo el dataset en esas gráficas.                                     |
 | Embedding usado   |               Token `[CLS]` | Se usa el embedding del primer token como representación global del documento.            |
@@ -216,7 +217,7 @@ A lo largo de la tarea de clasificación, la representación BERT tiene dos usos
 Esta diferencia es fundamental para interpretar los resultados. Los embeddings BERT son útiles, pero no siempre superan a TF-IDF. En cambio, el fine-tuning de DistilBERT obtiene el mejor resultado global porque adapta el modelo completo al dataset WELFake.
 
 
-#### 4.1.4. Comparación metodológica entre representaciones
+#### 4.4. Comparación metodológica entre representaciones
 
 Las tres representaciones permiten analizar el problema desde perspectivas distintas:
 
@@ -224,7 +225,7 @@ Las tres representaciones permiten analizar el problema desde perspectivas disti
 - **Word2Vec** indica el  significado aproximado tienen las palabras dentro del documento.
 - **BERT** dicta que información contextual y semántica contiene el texto completo.
 
-Por ende, no se trata  unicamente de escoger la técnica más compleja, sino de comprobar qué tipo de información resulta más útil para el dataset empleado.
+Por ende, no se trata  únicamente de escoger la técnica más compleja, sino de comprobar qué tipo de información resulta más útil para el dataset empleado.
 
 Los resultados muestran que TF-IDF es muy competitivo porque el dataset contiene señales léxicas fuertes. Word2Vec funciona peor porque al promediar palabras pierde información estructural. BERT como extractor fijo obtiene buenos resultados, pero su máximo potencial aparece cuando se realiza fine-tuning.
 
@@ -233,7 +234,7 @@ En conjunto, esta comparación permite concluir que la representación del texto
 
 ## 5. Modelos de clasificación
 
-Una vez obtenidas las representaciones vectoriales del texto, se pasa  al entrenamiento, comparación y evaluacion de distintos modelos de clasificación supervisada. 
+Una vez obtenidas las representaciones vectoriales del texto, se pasa  al entrenamiento, comparación y evaluación de distintos modelos de clasificación supervisada. 
 
 El objetivo es analizar cómo cambia el rendimiento al aplicar la combinación de diferentes tipos de representaciones con modelos de complejidad distinta.
 
@@ -256,7 +257,7 @@ Las métricas utilizadas son **Accuracy**, **F1-score de la clase fake** y **ROC
 
 ### 5.1. Modelos clásicos de Scikit-learn
 
-Para empezar, se entrenan tres modelos  de aprendizaje supervisado: **Logistic Regression**, **Linear SVM** y **Random Forest**. Esto permitirá realizar una comparación robústa frente a modelos neuronales complejos.
+Para empezar, se entrenan tres modelos  de aprendizaje supervisado: **Logistic Regression**, **Linear SVM** y **Random Forest**. Esto permitirá realizar una comparación robusta frente a modelos neuronales complejos.
 
 | Modelo | Representación | Utilización|
 |---|---|---|
@@ -289,7 +290,7 @@ Este clasificador busca una frontera de separación con el mayor margen posible 
 | `random_state` | `42` | Permite reproducir los resultados |
 | Tipo de SVM | Lineal | Adecuado para texto de alta dimensión |
 
-Al evaluar la clasificación del dataset en su totalidad, Linear SVM toma un papel protagonista ya que termina siendo el mejor modelo clásico. El buen redimiento con TF-IDF indica que gran parte de la información necesaria para clasificar noticias reales y falsas está presente en la distribución de palabras y bigramas. 
+Al evaluar la clasificación del dataset en su totalidad, Linear SVM toma un papel protagonista ya que termina siendo el mejor modelo clásico. El buen rendimiento con TF-IDF indica que gran parte de la información necesaria para clasificar noticias reales y falsas está presente en la distribución de palabras y bigramas. 
 
 #### Random Forest
 
@@ -305,7 +306,7 @@ De esta forma, no es el modelo más natural para texto de alta dimensión. Por l
 | TF-IDF usado | `SVD300` | Reduce coste computacional y dimensionalidad |
 | `n_jobs` | `-1` | Paraleliza el entrenamiento |
 
-Random Forest se incluye como contraste frente a modelos lineales y neuronales. Obtiene resultados  más bajos, lo cual es esperable, ya quelos modelos basados en árboles no suelen explotar tan bien las representaciones textuales dispersas o embeddings de alta dimensión.
+Random Forest se incluye como contraste frente a modelos lineales y neuronales. Obtiene resultados  más bajos, lo cual es esperable, ya que los modelos basados en árboles no suelen explotar tan bien las representaciones textuales dispersas o embeddings de alta dimensión.
 
 ### 5.2. Red neuronal MLP en PyTorch
 
@@ -368,7 +369,7 @@ Los modelos se han escogido para cubrir distintos niveles de complejidad:
 | **Linear SVM** | Modelo lineal de margen máximo |Buen funcionamiento con TF-IDF y permite comprobar si maximizar el margen mejora la clasificación frente a Logistic Regression. |
 | **Random Forest** | Modelo no lineal basado en árboles | Permite evaluar si combinar muchos árboles aporta ventajas frente a modelos lineales en representaciones reducidas como Word2Vec, BERT o TF-IDF con SVD. |
 | **MLP PyTorch** | Red neuronal sobre vectores | Sirve para comprobar si una red neuronal densa puede aprovechar mejor las representaciones vectoriales que los clasificadores clásicos. |
-| **DistilBERT fine-tuning** | Transformer ajustado extremo a extremo | Permite evaluar si adaptar un modelo de lenguaje completo a la tarea mejora de forma evidente los resultados |                  |
+| **DistilBERT fine-tuning** | Transformer ajustado extremo a extremo | Permite evaluar si adaptar un modelo de lenguaje completo a la tarea mejora de forma evidente los resultados |                  
 
 
 Esta comparación es especialmente importante para decidir si realmente  para detectar desinformación  es suficiente con técnicas estadísticas clásicas o si realmente es necesario utilizar modelos de lenguaje avanzados. 
@@ -517,7 +518,7 @@ Al inicio del proyecto se plantean diferentes hipótesis sobre el comportamiento
 ### Hipótesis 1: Diferencias léxicas entre noticias reales y falsas
 
 **Contexto de la hipótesis:**
-Noticias reales y falsas utilizan exactamente el mismo tipo de vocabulario. En concreto, se planteaba que podían existir diferencias en las palabras frecuentes, expresiones utilizadas, nombres propios, fuentes mencionadas o estilo de redacción.
+Se esperaba que las noticias reales y falsas no utilizaran exactamente el mismo tipo de vocabulario. En concreto, se planteaba que podían existir diferencias en las palabras frecuentes, expresiones utilizadas, nombres propios, fuentes mencionadas o estilo de redacción.
 
 **Resultado obtenido:**
 Esta hipótesis se cumple. Los modelos basados en TF-IDF obtienen resultados muy altos, especialmente Linear SVM + TF-IDF, con un `F1_fake` cercano a `0.963`. Esto indica que las palabras y combinaciones de palabras presentes en los textos contienen mucha información para separar noticias reales y falsas.
@@ -540,7 +541,7 @@ Esta hipótesis se cumple. Todos los modelos entrenados superan ampliamente el a
 Modelos tipo BERT pueden aportar ventajas frente a representaciones más simples porque capturan el contexto de las palabras. Sin embargo, también se quería comprobar si bastaba con usar BERT como extractor de embeddings o si era necesario hacer fine-tuning.
 
 **Resultado obtenido:**
-La hipótesis se cumple, pero con matizada. Los embeddings BERT ofrecen buenos resultados, especialmente cuando se combinan con una red neuronal MLP. Sin embargo, no siempre superan a TF-IDF con modelos lineales.
+La hipótesis se cumple, pero con matices. Los embeddings BERT ofrecen buenos resultados, especialmente cuando se combinan con una red neuronal MLP. Sin embargo, no siempre superan a TF-IDF con modelos lineales.
 
 La mejora más clara aparece al hacer fine-tuning de DistilBERT. En este caso, el modelo no solo genera vectores, sino que ajusta sus pesos internos al problema concreto de clasificación de noticias reales y falsas. Por eso consigue el mejor resultado global del proyecto.
 
@@ -565,13 +566,13 @@ No obstante, la relación no es perfecta. Algunos clusters con bajo porcentaje d
 
 ## 10. Conclusiones
 
-Este proyecto demuestra como la tarea de  clasificación automática de noticias falsas en el dataset WELfake es viable y llega a alcanzar resultados muy elevados. El modelo con mejores resultados obtenidos es DistilBERT fine-tuned sobre texto filtrado, seguido de Linear SVM con TF-IDF.
+Este proyecto demuestra cómo la tarea de  clasificación automática de noticias falsas en el dataset WELfake es viable y llega a alcanzar resultados muy elevados. El modelo con mejores resultados obtenidos es DistilBERT fine-tuned sobre texto filtrado, seguido de Linear SVM con TF-IDF.
 
 Estos resultados indican  de forma directa que WELFake contiene patrones textuales, temáticos y estilísticos muy discriminativos. TF-IDF es una representación muy competitiva, lo que confirma la importancia de las señales léxicas. Sin embargo, el mejor rendimiento se obtiene al ajustar un Transformer. 
 
 También se demuestra que los resultados altos no pueden atribuirse directamente a una fuga de información. Se eliminan duplicados, se verifica la ausencia de solapamiento entre particiones, se filtran términos de fuente y palabras-etiqueta, y se realizan pruebas de robustez adicionales.
 
-Además, la extensión demuestra como la desinformación no se distribuye de forma  homogénea, donde algunos clusters concentran un porcentaje mucho mayor de noticias fake. Además, las fake presentan mayor carga política, emocional y confrontativa, lo que conecta el análisis de desinformación con la polarización lingüística.
+Además, la extensión demuestra cómo la desinformación no se distribuye de forma  homogénea, donde algunos clusters concentran un porcentaje mucho mayor de noticias fake. Además, las fake presentan mayor carga política, emocional y confrontativa, lo que conecta el análisis de desinformación con la polarización lingüística.
 
 ---
 
@@ -583,7 +584,7 @@ El proyecto presenta principalmente las dos siguientes limitaciones.
 
 2. **Truncamiento en BERT.** Los modelos BERT usan una longitud máxima de 256 tokens, por lo que parte de las noticias largas puede quedar fuera.
 
-## 12.Bibliográfia
+## 12.Bibliografía
 
 Apuntes del temario de la asignatura Tratamiento de Datos. (s. f.). Material docente de la asignatura.
 
