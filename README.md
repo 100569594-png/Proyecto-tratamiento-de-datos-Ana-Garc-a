@@ -65,7 +65,7 @@ De esta forma, debido al tamaño del dataset se utiliza la siguiente división e
 
 Esta división de los datos fue la elegida debido a que el dataset es bastante grande, donde validation y test mantienen más de 6.000 ejemplos cada uno, mientras que se conserva el mayor número posible de noticias para entrenar modelos complejos, especialmente el fine-tuning de Transformers.
 
-![Distribución de clases](fig_distribucion_clases.png)
+![Distribución de clases](fig_longitudes.png)
 
 Además, se verifica explícitamente que no existe solapamiento entre particiones:
 
@@ -98,7 +98,7 @@ El análisis detecta términos de fuente muy asociados a una clase. Como por eje
 | `yournewswire` | Asociado a noticias fake |
 | `beforeitsnews` | Asociado a noticias fake |
 
-![Nubes de palabras por clase](fig_wordclouds.png)
+![Análisis de términos asociados a fuentes](fig_leakage_fuentes.png)
 
 Estos términos pueden actuar como atajos directos,  el modelo podría clasificar por fuente en lugar de aprender patrones generales de desinformación.
 
