@@ -52,6 +52,8 @@ La distribución de clases tras la limpieza es relativamente equilibrada:
 | Real | 34.790 | 54,7 % |
 | Fake | 28.847 | 45,3 % |
 
+![Distribución de clases](fig_distribucion_clases.png)
+
 De esta forma, debido al tamaño del dataset se utiliza la siguiente división estratégica **80/10/10**:
 
 | Split | Nº noticias | Uso |
@@ -60,9 +62,10 @@ De esta forma, debido al tamaño del dataset se utiliza la siguiente división e
 | Validation | 6.364 | Comparación y selección de modelos |
 | Test | 6.364 | Evaluación final |
 
+
 Esta división de los datos fue la elegida debido a que el dataset es bastante grande, donde validation y test mantienen más de 6.000 ejemplos cada uno, mientras que se conserva el mayor número posible de noticias para entrenar modelos complejos, especialmente el fine-tuning de Transformers.
 
-![Distribución de clases](images/fig_distribucion_clases.png)
+![Distribución de clases](fig_distribucion_clases.png)
 
 Además, se verifica explícitamente que no existe solapamiento entre particiones:
 
@@ -78,6 +81,9 @@ Además, se verifica explícitamente que no existe solapamiento entre particione
 
 A lo largo del  Notebook 1 se ha realizado un análisis detallado del dataset: distribución de clases, longitudes de texto, palabras frecuentes, nubes de palabras y ejemplos por clase.
 
+![Palabras frecuentes por clase](fig_palabras_frecuentes.png)
+![Nubes de palabras por clase](fig_wordclouds.png)
+
 La parte central del análisis consiste en revisar posibles fuentes de **data leakage**, ya que en un dataset de estas caracteristicas  es especialmente importante comprobar si existen palabras que simplificaran artificialmente la tarea, como nombres de fuentes muy parecidos a una clase.
 
 ### 3.1. Posibles atajos de fuente
@@ -91,6 +97,8 @@ El análisis detecta términos de fuente muy asociados a una clase. Como por eje
 | `natural news` | Asociado a noticias fake |
 | `yournewswire` | Asociado a noticias fake |
 | `beforeitsnews` | Asociado a noticias fake |
+
+![Nubes de palabras por clase](fig_wordclouds.png)
 
 Estos términos pueden actuar como atajos directos,  el modelo podría clasificar por fuente en lugar de aprender patrones generales de desinformación.
 
@@ -232,6 +240,14 @@ Por ende, no se trata  únicamente de escoger la técnica más compleja, sino de
 Los resultados muestran que TF-IDF es muy competitivo porque el dataset contiene señales léxicas fuertes. Word2Vec funciona peor porque al promediar palabras pierde información estructural. BERT como extractor fijo obtiene buenos resultados, pero su máximo potencial aparece cuando se realiza fine-tuning.
 
 En conjunto, esta comparación permite concluir que la representación del texto tiene un impacto directo en el rendimiento del clasificador. En WELFake, las señales léxicas son muy potentes, pero el mejor rendimiento se alcanza cuando se combinan representación contextual y ajuste supervisado mediante DistilBERT fine-tuned.
+
+![Comparación t-SNE de las representaciones vectoriales](fig_tsne_comparacion.png)
+
+
+La siguiente figura resume de forma exploratoria el grado de separación entre clases para cada representación vectorial.
+
+![Separabilidad exploratoria por representación](fig_separabilidad.png)
+
 ---
 
 ## 5. Modelos de clasificación
@@ -342,6 +358,8 @@ Al analizar los resultados, la red neuronal funciona muy bien con embeddings BER
 
 Se trata del modelo más complejo del proyecto, **fine-tuning de DistilBERT** mediante Hugging Face Transformers.Para ello, el texto tokenizado entra directamente al Transformer y se ajustan los pesos del modelo preentrenado para la tarea concreta de clasificar noticias reales y falsas.
 
+![Curvas de entrenamiento de la red MLP](fig_curvas_mlp.png)
+
 
 | Parámetro | Valor | Justificación |
 |---|---:|---|
@@ -355,6 +373,9 @@ Se trata del modelo más complejo del proyecto, **fine-tuning de DistilBERT** me
 | Evaluación | Cada época | Permite monitorizar validation en el entrenamiento |
 | Selección del modelo | Mejor `F1` en validation | Prioriza la detección de noticias fake |
 | `fp16` | Activado con GPU | Reduce memoria y acelera entrenamiento |
+
+
+![Curvas de fine-tuning de DistilBERT](fig_curvas_finetuning.png)
 
 Antes del fine-tuning se aplica una limpieza mínima filtrada, eliminando URLs y términos de alto riesgo asociados a fuentes o etiquetas, como `reuters`, `infowars`, `fake`, `false`, `true` o `real`, pero se conserva el resto de la estructura textual. Reduciendo atajos explícitos sin destruir el contexto.
 
@@ -401,6 +422,10 @@ Por tanto, la elección del modelo depende del objetivo. Si se busca eficiencia,
 | 12 | Random Forest | BERT-emb | 0.8905 | 0.8772 | 0.9571 |
 | 13 | Random Forest | Word2Vec | 0.8875 | 0.8753 | 0.9559 |
 
+
+![Comparativa final de modelos](fig_comparativa_final.png)
+
+![Heatmap de F1 por modelo y representación](fig_heatmap_f1.png)
 ### 6.2. Interpretación de resultados
 
 El mejor modelo global es **DistilBERT fine-tuned sobre texto filtrado**, con `F1_fake = 0.9938`. Este resultado indica que el ajuste supervisado del Transformer permite capturar patrones textuales muy discriminativos del dataset.
@@ -412,6 +437,8 @@ Los embeddings BERT también son útiles, especialmente al ser utilizados con la
 Por otro lado, Word2Vec queda por debajo de TF-IDF y BERT. Este comportamiento es esperable porque representa cada noticia mediante el promedio de embeddings de palabras, perdiendo orden, estructura y contexto global.
 
 Random Forest es el modelo más débil. Esto no es sorprendente, debido a que no suele ser el método más adecuado para texto de alta dimensión. Además, para TF-IDF se usa una reducción SVD a 300 dimensiones por razones computacionales, lo que hace que su comparación con Logistic Regression y SVM no sea completamente equivalente.
+
+![Matrices de confusión de los mejores modelos](fig_confusion_matrices.png)
 
 ---
 
@@ -451,7 +478,7 @@ Se comprueba que los términos de alto riesgo no aparecen en el texto filtrado u
 
 Esto confirma que el fine-tuning no recibe directamente los términos explícitos definidos como alto riesgo.
 
-
+![Resumen de pruebas de robustez frente a leakage](fig_sanity_checks.png)
 ## 8. Proyecto de extensión: análisis temático y polarización lingüística
 
 Como trabajo de extensión se realiza un análisis de interpretación del dataset mediante clustering y medición de indicadores lingüísticos de polarización.
@@ -466,6 +493,9 @@ Se utilizan los embeddings BERT generados en el Notebook 2 y se aplica KMeans. E
 k = 6
 ```
 
+
+![Selección del número de clusters mediante silhouette score](fig_extension_silhouette.png)
+
 El clustering se ajusta solo sobre train y después se asignan clusters a validation y test.
 
 La distribución de noticias fake por cluster muestra que la desinformación no se reparte de forma homogénea:
@@ -478,6 +508,8 @@ La distribución de noticias fake por cluster muestra que la desinformación no 
 | 1 | 25,27 % |
 | 4 | 11,55 % |
 | 0 | 11,15 % |
+
+![Porcentaje de noticias fake por cluster](fig_extension_fake_por_cluster.png)
 
 El cluster 5, muy dominado por noticias fake, contiene palabras clave relacionadas con política, por ejemplo:
 
@@ -506,9 +538,14 @@ Los resultados por clase son:
 | Fake | 23,69 | 2,63 | 1,26 |
 | Real | 21,42 | 1,87 | 0,45 |
 
+![Indicadores de polarización lingüística por clase(fig_extension_polarizacion_por_clase.png)
+
+
 Las noticias falsas tienden a presentar más términos políticos, más vocabulario de conflicto y una carga emocional mayor que las noticias reales. 
 
 No obstante, el análisis por clusters muestra que el lenguaje conflictivo no equivale automáticamente a desinformación, ya que algunos clusters con bajo porcentaje de fake también presentan términos de conflicto.
+
+![Relación entre polarización y porcentaje de fake por cluster (fig_extension_conflicto_vs_fake.png)
 
 ---
 
